@@ -7,7 +7,7 @@ import (
 	// "net/http"
 	"os"
 	"os/signal"
-	// "strings"
+	"strings"
 	"syscall"
 
 	"github.com/bwmarrin/discordgo"
@@ -79,16 +79,15 @@ type Gopher struct {
 // message is created on any channel that the authenticated bot has access to.
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
-	fmt.Println(m.Content)
 	// Ignore all messages created by the bot itself
 	// This isn't required in this specific example but it's a good practice.
 	if m.Author.ID == s.State.User.ID {
 		return
 	}
 
-	fmt.Println("didn't return early!")
-	if m.Content == "v" {
-		fmt.Println("recognized the message!")
+	content := strings.ToLower(m.Content)
+
+	if content == "v" || (strings.Contains(content, "rock") && strings.Contains(content, "stone")) {
 		_, err := s.ChannelMessageSend(m.ChannelID, "Rock and Stone!")
 		if err != nil {
 			fmt.Printf("Couldn't respond to message '%s' from user %s", m.Content, m.Author.Username)
