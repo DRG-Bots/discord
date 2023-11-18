@@ -1,20 +1,25 @@
 package main
 
 import (
-	// "encoding/json"
+	"encoding/json"
+	"errors"
 	"fmt"
-	// "io"
-	// "net/http"
+	"io"
+	"math/rand"
+	"net/http"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 )
 
 var (
-	Token string
+	Token   string
+	Salutes []string
+	Trivia  []string
 )
 
 const (
@@ -43,6 +48,19 @@ func init() {
 }
 
 func main() {
+	// Get salutes and trivia from API
+	var err error // needed to not redeclare variables
+	Salutes, err = getApiStringList("/v1/salutes", "salutes")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	Trivia, err = getApiStringList("/v1/trivia", "trivia")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
 	// Create a new Discord session using the provided bot token.
 	dg, err := discordgo.New("Bot " + Token)
 	if err != nil {
@@ -71,8 +89,27 @@ func main() {
 	dg.Close()
 }
 
-type Gopher struct {
-	Name string `json:"name"`
+func getApiStringList(endpoint, key string) ([]string, error) {
+	response, err := http.Get(DrgApiURL + endpoint)
+	if err != nil {
+		return nil, err
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode == 200 {
+		body, err := io.ReadAll(response.Body)
+		if err != nil {
+			return nil, err
+		}
+		var data map[string][]string
+		err = json.Unmarshal(body, &data)
+		if err != nil {
+			return nil, err
+		}
+		return data[key], nil
+	} else {
+		return nil, errors.New("Endpoint " + endpoint + " returned status code " + response.Status)
+	}
 }
 
 // This function will be called (due to AddHandler above) every time a new
@@ -88,9 +125,16 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	content := strings.ToLower(m.Content)
 
 	if content == "v" || (strings.Contains(content, "rock") && strings.Contains(content, "stone")) {
-		_, err := s.ChannelMessageSend(m.ChannelID, "Rock and Stone!")
+		_, err := s.ChannelMessageSend(m.ChannelID, getRandomLine(Salutes))
 		if err != nil {
 			fmt.Printf("Couldn't respond to message '%s' from user %s", m.Content, m.Author.Username)
 		}
+		return
 	}
+}
+
+func getRandomLine(lines []string) string {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	i := r.Intn(len(lines))
+	return lines[i]
 }
