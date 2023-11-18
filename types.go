@@ -10,7 +10,7 @@ type DeepDive struct {
 	DDType string  `json:"type"`
 	Name   string  `json:"name"`
 	Biome  string  `json:"biome"`
-	Seed   string  `json:"seed"`
+	Seed   int     `json:"seed"`
 	Stages []Stage `json:"stages"`
 }
 
@@ -18,6 +18,6 @@ type Stage struct {
 	Id        int    `json:"id"`
 	Primary   string `json:"primary"`
 	Secondary string `json:"secondary"`
-	Anomaly   string `json:"anomaly"`
-	Warning   string `json:"warning"`
+	Anomaly   string `json:"anomaly,omitempty"`
+	Warning   string `json:"warning,omitempty"`
 }

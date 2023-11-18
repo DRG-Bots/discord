@@ -139,17 +139,106 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		var err error = nil
 		switch rest {
 		case "dd":
-			fmt.Println("dd")
+			message, err := buildOneDiveMessage(0)
+			if err != nil {
+				break
+			}
+			_, err = s.ChannelMessageSend(m.ChannelID, message)
 		case "edd":
-			fmt.Println("edd")
+			message, err := buildOneDiveMessage(1)
+			if err != nil {
+				break
+			}
+			_, err = s.ChannelMessageSend(m.ChannelID, message)
+		case "dives":
+			message, err := buildBothDivesMessage()
+			if err != nil {
+				break
+			}
+			_, err = s.ChannelMessageSend(m.ChannelID, message)
 		case "fact":
 			_, err = s.ChannelMessageSend(m.ChannelID, getRandomLine(Trivia))
 		default:
 			return
 		}
 		if err != nil {
-			fmt.Printf("Couldn't respond to message '%s' from user %s", m.Content, m.Author.Username)
+			fmt.Printf("Couldn't respond to message '%s' from user %s: %s\n", m.Content, m.Author.Username, err.Error())
 		}
+	}
+}
+
+func buildOneDiveMessage(diveId int) (string, error) {
+	dives, err := getDivesData()
+	if err != nil {
+		return "", err
+	}
+	builder := strings.Builder{}
+	builder.WriteString(buildDiveMessage(dives.Variants[diveId]))
+	builder.WriteByte('\n')
+	builder.WriteString(getRandomLine(Salutes))
+	return builder.String(), nil
+}
+
+func buildBothDivesMessage() (string, error) {
+	dives, err := getDivesData()
+	if err != nil {
+		return "", err
+	}
+	builder := strings.Builder{}
+	builder.WriteString(buildDiveMessage(dives.Variants[0]))
+	builder.WriteByte('\n')
+	builder.WriteString(buildDiveMessage(dives.Variants[1]))
+	builder.WriteByte('\n')
+	builder.WriteString(getRandomLine(Salutes))
+	builder.WriteString("\n\n")
+	builder.WriteString("**Did You Know?** ")
+	builder.WriteString(getRandomLine(Trivia))
+	return builder.String(), nil
+}
+
+func buildDiveMessage(dive DeepDive) string {
+	builder := strings.Builder{}
+	builder.WriteString(fmt.Sprintf("This week's **%s** is **%s**, set in the **%s**\n", dive.DDType, dive.Name, dive.Biome))
+	for _, stage := range dive.Stages {
+		warning := ""
+		if stage.Warning != "" {
+			warning = fmt.Sprintf(" warning: %s", stage.Warning)
+		}
+		anomaly := ""
+		if stage.Anomaly != "" {
+			anomaly = fmt.Sprintf(" Anomaly: %s", stage.Anomaly)
+			if warning != "" {
+				anomaly += ","
+			}
+		}
+		sep := ""
+		if anomaly != "" || warning != "" {
+			sep = " |"
+		}
+		builder.WriteString(fmt.Sprintf("Stage **%d**: %s, %s%s%s%s\n", stage.Id, stage.Primary, stage.Secondary, sep, anomaly, warning))
+	}
+	return builder.String()
+}
+
+func getDivesData() (DeepDivesReqBody, error) {
+	response, err := http.Get(DrgApiURL + "/v1/deepdives")
+	if err != nil {
+		return DeepDivesReqBody{}, err
+	}
+	defer response.Body.Close()
+	if response.StatusCode == 200 {
+		body, err := io.ReadAll(response.Body)
+		if err != nil {
+			return DeepDivesReqBody{}, err
+		}
+		data := DeepDivesReqBody{}
+		err = json.Unmarshal(body, &data)
+		if err != nil {
+			return DeepDivesReqBody{}, err
+		}
+		return data, nil
+	} else {
+		return DeepDivesReqBody{}, errors.New(response.Status)
 	}
 }
 
