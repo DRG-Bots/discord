@@ -112,8 +112,6 @@ func getApiStringList(endpoint, key string) ([]string, error) {
 	}
 }
 
-// This function will be called (due to AddHandler above) every time a new
-// message is created on any channel that the authenticated bot has access to.
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	// Ignore all messages created by the bot itself
@@ -130,6 +128,28 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			fmt.Printf("Couldn't respond to message '%s' from user %s", m.Content, m.Author.Username)
 		}
 		return
+	}
+
+	if len(content) < 3 {
+		return
+	}
+
+	if content[:2] == "v " {
+		rest := content[2:]
+		var err error = nil
+		switch rest {
+		case "dd":
+			fmt.Println("dd")
+		case "edd":
+			fmt.Println("edd")
+		case "fact":
+			_, err = s.ChannelMessageSend(m.ChannelID, getRandomLine(Trivia))
+		default:
+			return
+		}
+		if err != nil {
+			fmt.Printf("Couldn't respond to message '%s' from user %s", m.Content, m.Author.Username)
+		}
 	}
 }
 
